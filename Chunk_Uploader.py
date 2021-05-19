@@ -1,39 +1,49 @@
-# chunk_list = [1, 2, 3, 4]
-# downloaded_chunk_list = []
-#
-# temp_ch_list = []
-#
-# for ch_file in chunk_list:
-#     temp_ch_list.append(ch_file)
-#     if ch_file != 4:
-#         downloaded_chunk_list.append(ch_file)
-#
-#
-# for dw_file in downloaded_chunk_list:
-#     for ch_index in temp_ch_list:
-#         if dw_file == ch_index:
-#             chunk_list.remove(dw_file)
-#
-# print("Chunk List: ", chunk_list, "\n")
-# print("Temp Chunk List: ", temp_ch_list, "\n")
-# print("Downloaded Chunk List: ", downloaded_chunk_list, "\n")
-#
-# content_dict = {}
-#
-# if "forest_1" in content_dict:
-#     content_dict["forest_1"].append("192.168.1.8")
-# else:
-#     content_dict["forest_1"] = ["192.168.1.8"]
-#
-# if "forest_1" in content_dict:
-#     content_dict["forest_1"].append("192.168.1.9")
-#
-# print(content_dict)
-#
+import os
+import socket
+import json
 
-# first_list = [1, 2, 3]
-# first_dict = {1: "asd", 2: "bsc", 3: "dsa", 4: "rewf"}
-#
-# for i in range(len(first_list)):
-#     if first_list[i] in list(first_dict.keys()):
-#         print("Hello")
+host_name = ''
+host_port = 8000
+
+uploader_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+uploader_socket.bind((host_name, host_port))
+uploader_socket.listen(5)
+
+current_path = os.getcwd()
+chunk_folder_path = current_path + "/chunks"
+
+print("Host is waiting for connection...", "\n")
+
+while True:
+    downloader_socket, addr = uploader_socket.accept()
+    print("Got connection from: {}".format(addr))
+
+    requested_json = downloader_socket.recv(1024).decode()
+    requested_dict = json.loads(requested_json)
+    requested_file_name = str(requested_dict["requested_content"])
+    print("A new request arrived. Requested file name: {}".format(requested_file_name))
+
+    requested_file_path = ''
+
+    for searched_path, searched_path_name, searched_path_file_name in os.walk(chunk_folder_path):
+        if requested_file_name in searched_path_file_name:
+            requested_file_path = os.path.join(searched_path, requested_file_name)
+
+    requested_file_size = os.path.getsize(requested_file_path)
+    print(requested_file_path, requested_file_size)
+    req_list = [requested_file_name, requested_file_size]
+    req_list_json = json.dumps(req_list)
+    downloader_socket.send(req_list_json.encode())
+
+    with open(requested_file_path, 'rb') as uploading_file:
+        read_bytes = uploading_file.read(10)
+        downloader_socket.send(read_bytes)
+        while True:
+            read_bytes = uploading_file.read(1024)
+            if not read_bytes:
+                downloader_socket.send(b'DONE SENDING')
+                break
+            downloader_socket.send(read_bytes)
+    uploading_file.close()
+    downloader_socket.close()
+    print("Looking for another connection...")
