@@ -1,6 +1,8 @@
 import json
 import os
 import socket
+import time
+from datetime import datetime
 
 program_value = True
 downloaded_chunk_list = []
@@ -47,7 +49,7 @@ while program_value:  # Download different files.
             chunk_dict[file_chunk_list[i]] = []
             chunk_dict[file_chunk_list[i]].extend(content_dict.get(file_chunk_list[i]))
 
-        print("\n", "Hosts that have your requested chunks: \n", chunk_dict)
+        print("\nHosts that have your requested chunks:\n{}\n".format(chunk_dict))
 
         download_path = os.getcwd() + '/downloads'
         downloaded_file_folder = download_path + '/' + file_name_wE
@@ -55,7 +57,7 @@ while program_value:  # Download different files.
         if not os.path.exists(download_path):
             try:
                 os.mkdir(download_path)  # created downloaded file storage folder.
-                print("A new folder 'downloads' has been created for store the downloaded files.", "\n")
+                print("A new folder 'downloads' has been created for store the downloaded files.")
             except OSError as error:
                 print(error)
 
@@ -63,8 +65,7 @@ while program_value:  # Download different files.
             try:
                 os.mkdir(downloaded_file_folder)  # created folder for downloaded file.
                 print(
-                    "A new folder {} has been created for store the downloaded file.".format(file_name_wE),
-                    "\n")
+                    "A new folder {} has been created for store the downloaded file.\n".format(file_name_wE))
             except OSError as error:
                 print(error)
 
@@ -72,7 +73,7 @@ while program_value:  # Download different files.
 
             downloading_chunk_path = downloaded_file_folder + "/" + downloading_chunk_name
             received_file_size = 0
-            print(downloading_chunk_name, ip_list, "DEBUG", "\n")
+
             for ip_address in ip_list:
                 # ############ TCP Session for downloading a chunk file. ############ #
                 request_dict = {
@@ -83,25 +84,28 @@ while program_value:  # Download different files.
                 host_port = 8000
 
                 downloader_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                while True:
-                    try:
-                        downloader_socket.connect((host_name, host_port))
-                        break
-                    except socket.error as e:
-                        print("Could not connected with any host. Will try again.")
-                print(downloading_chunk_name, ip_address, "DEBUG", "\n")
+                try:
+                    downloader_socket.connect((host_name, host_port))
+
+                except socket.error as e:
+                    if len(ip_list) > 1:
+                        print("Could not connected with host {}. Will try with another host.\n".format(ip_address))
+                        continue
+                    else:
+                        print("Could not connected with host {}. No host found for requested file.\n".format(ip_address))
+                        continue
+
                 print("Connection established with ", ip_address)
                 request_json = json.dumps(request_dict)
                 print("JSON Request: ", request_json)
                 downloader_socket.send(request_json.encode())
-                print("The file '{}' requested from host.".format(downloading_chunk_name))
+                print("The file '{}' requested from host.\n".format(downloading_chunk_name))
 
                 req_list_json = downloader_socket.recv(1024).decode()
                 req_list = json.loads(req_list_json)
 
                 received_file_name = req_list[0]
                 received_file_size = req_list[1]
-                print(type(req_list_json))
                 print("'{}' (size: {}) is being downloaded...".format(received_file_name, received_file_size))
 
                 with open(downloading_chunk_path, 'wb') as download_file:
@@ -113,30 +117,40 @@ while program_value:  # Download different files.
                         except socket.error as e:
                             print("Error receiving data:", e)
                             break
-                        if received_bytes == b'DONE SENDING':
+                        if received_bytes == b'':
                             break
                         download_file.write(received_bytes)
                 download_file.close()
-                print(os.path.getsize(downloading_chunk_path), received_file_size)
-                if os.path.getsize(downloading_chunk_path) < received_file_size:
+                if not os.path.getsize(downloading_chunk_path) == received_file_size:
                     if len(ip_list) < 2:
                         print("Downloading process of {} was not successful from {}. No one has your requested chunk "
-                              "file. So program will stop, you can download another file by entering a new file name."
-                              " ".format(downloading_chunk_name, ip_address))
+                              "file. So program will stop, you can download another file by entering a new file name.\n".format(downloading_chunk_name, ip_address))
                     elif ip_address == ip_list[-1]:
                         print("Downloading process of {} was not successful from online peers. You can download "
-                              "another file by entering a new file name.".format(downloading_chunk_name))
+                              "another file by entering a new file name.\n".format(downloading_chunk_name))
                     else:
-                        print("Downloading process of {} was not successful from {}. Will try from another host.".format(downloading_chunk_name, ip_address))
+                        print("Downloading process of {} was not successful from {}. Will try from another host.\n".format(downloading_chunk_name, ip_address))
                 else:
-                    print("{} downloaded successfully. Moving on the next chunk file...".format(downloading_chunk_name))
+                    print("{} downloaded successfully. Logged on 'download_log.txt' Moving on the next chunk file...".format(downloading_chunk_name))
+                    print("***********************************************", "\n")
                     downloaded_chunk_list.append(downloading_chunk_name)
-                    # download log burada oluşturulacak.
+                    download_log_file = os.getcwd() + "/download_log.txt"
+                    with open(download_log_file, 'a+') as download_log:
+                        timestamp = datetime.now()
+                        timestamp_str = timestamp.strftime("%d/%m/%Y %H:%M:%S")
+                        log_data = "Time: " + timestamp_str + " File Name: " + downloading_chunk_name + " Host: " + str(ip_address)
+                        download_log.seek(0)
+                        old_data = download_log.read()
+                        if len(old_data) > 0:
+                            download_log.write("\n")
+                        download_log.write(log_data)
+                    download_log.close()
+                    time.sleep(4)
                     break
 
                 downloader_socket.close()
 
-            if os.path.getsize(downloading_chunk_path) < received_file_size:
+            if not os.path.getsize(downloading_chunk_path) == received_file_size:
                 break
 
         if len(downloaded_chunk_list) == 5:
@@ -153,7 +167,7 @@ while program_value:  # Download different files.
                         outfile.write(infile.read())
                     infile.close()
             outfile.close()
-            print("The file {} was downloaded and combined successfully in {}".format(file_name, downloaded_file))
+            print("The file {} was downloaded and combined successfully in {}\n".format(file_name, downloaded_file))
 
         new_bool = True
         while new_bool:

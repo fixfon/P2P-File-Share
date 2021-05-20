@@ -1,15 +1,16 @@
 import json
 import os
 from socket import *
+import time
 
 serverPort = 5001
 discoverySocket = socket(AF_INET, SOCK_DGRAM)
 discoverySocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
 discoverySocket.bind(('', serverPort))
 
-print("Chunk Discovery is listening for chunk names...")
+print("\nChunk Discovery is listening for chunk names...")
 
-while True:  # try it.
+while True:
     jsonAnnouncement, announcerAddress = discoverySocket.recvfrom(1024) #announcerAddress[0] = IP
 
     print("An announcement received from ", announcerAddress, "\n")
@@ -24,7 +25,7 @@ while True:  # try it.
     content_dict = {}
 
     if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-        print("Looking for other chunk files and ip lists in the old content dictionary file...", "\n")
+        print("Looking for other chunk files and ip lists in the content dictionary file {}\n".format(file_name))
         with open(file_path, 'r') as read_file:
             content_dict = json.load(read_file)
 
@@ -44,7 +45,7 @@ while True:  # try it.
 
     content_file.close()
 
-    print("Received chunk file list has been written and saved with ip address details in content dictionary file.", "\n")
+    print("Received chunk file list has been written and saved with ip address details in content dictionary file.")
     print("All detected users and their hosted chunk list:", "\n")
 
     host_chunk_dict = {}
@@ -65,3 +66,5 @@ while True:  # try it.
         print(values, "\n")
 
     print("Looking for another broadcast...")
+    print("***********************************************", "\n")
+    time.sleep(4)

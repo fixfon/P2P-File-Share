@@ -99,7 +99,7 @@ print("***********************************************", "\n")
 
 # ######### UDP CLIENT CONNECTION ##########
 
-serverIP = '192.168.1.255'
+serverIP = '25.255.255.255'
 serverPort = 5001
 serverAddress = (serverIP, serverPort)
 index_broadcast = 0
@@ -114,4 +114,4 @@ while True:
 
     print("Broadcasted {} times. Still keeping on...".format(index_broadcast), "\n")
     index_broadcast += 1
-    time.sleep(8)
+    time.sleep(60)
