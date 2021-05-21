@@ -73,6 +73,7 @@ while program_value:  # Download different files.
 
             downloading_chunk_path = downloaded_file_folder + "/" + downloading_chunk_name
             received_file_size = 0
+            loop_time = 0
 
             for ip_address in ip_list:
                 # ############ TCP Session for downloading a chunk file. ############ #
@@ -84,17 +85,28 @@ while program_value:  # Download different files.
                 host_port = 8000
 
                 downloader_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                try:
-                    downloader_socket.connect((host_name, host_port))
+                loop_time = 0
+                error_bool = False
 
-                except socket.error as e:
+                while loop_time < 3:
+                    try:
+                        print("Try to connect {}. Attempt {} of 3...".format(ip_address, loop_time + 1))
+                        downloader_socket.connect((host_name, host_port))
+                        error_bool = False
+                        loop_time = 3
+                    except socket.error as e:
+                        print("Could not connected with host {}.\n".format(ip_address))
+                        loop_time += 1
+                        error_bool = True
+
+                if error_bool:
                     if len(ip_list) > 1:
                         print("Could not connected with host {}. Will try with another host.\n".format(ip_address))
                         continue
                     else:
-                        print("Could not connected with host {}. No host found for requested file.\n".format(ip_address))
+                        print(
+                            "Could not connected with host {}. No host found for requested file.\n".format(ip_address))
                         continue
-
                 print("Connection established with ", ip_address)
                 request_json = json.dumps(request_dict)
                 print("JSON Request: ", request_json)
